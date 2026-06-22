@@ -28,7 +28,7 @@ cp .env.example .env.local   # then add your ANTHROPIC_API_KEY
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open <http://localhost:3000>
 
 ### Environment
 
@@ -53,7 +53,7 @@ production.
 
 ## Project structure
 
-```
+``` tsx
 app/
   page.tsx                 Landing page
   reading/page.tsx         Draw screen (client component)
