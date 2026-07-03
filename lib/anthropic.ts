@@ -3,9 +3,18 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { jsonSchemaOutputFormat } from "@anthropic-ai/sdk/helpers/json-schema";
 import type { GroundingEntry, ReadingSection, Spread } from "@/types";
+import { createCircuitBreaker } from "@/lib/circuitBreaker";
 import { groundingToPromptText } from "@/lib/reading";
 
 const MODEL = "claude-opus-4-8";
+const AI_TIMEOUT_MS = 12_000;
+const MAX_RETRIES = 2;
+const RETRY_BACKOFF_MS = [400, 1_000] as const;
+
+const aiCircuitBreaker = createCircuitBreaker({
+  failureThreshold: 5,
+  cooldownMs: 60_000,
+});
 
 /** The AI-generated narrative layered on top of the knowledgebase facts. */
 export interface ReadingNarrative {
@@ -67,6 +76,28 @@ export function isAiConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`AI request timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+  });
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Generate the AI narrative for a reading, grounded in the knowledgebase facts.
  * Returns null when the API key is missing or the call fails, so callers can
@@ -78,6 +109,7 @@ export async function generateReadingNarrative(
   question: string | null,
 ): Promise<ReadingNarrative | null> {
   if (!isAiConfigured()) return null;
+  if (!aiCircuitBreaker.canRequest()) return null;
 
   const client = new Anthropic();
 
@@ -97,30 +129,46 @@ export async function generateReadingNarrative(
     groundingToPromptText(grounding),
   ].join("\n");
 
-  try {
-    const message = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 1500,
-      thinking: { type: "adaptive" },
-      system: SYSTEM_PROMPT,
-      output_config: { format: jsonSchemaOutputFormat(OUTPUT_SCHEMA) },
-      messages: [{ role: "user", content: userMessage }],
-    });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const message = await withTimeout(
+        client.messages.parse({
+          model: MODEL,
+          max_tokens: 1500,
+          thinking: { type: "adaptive" },
+          system: SYSTEM_PROMPT,
+          output_config: { format: jsonSchemaOutputFormat(OUTPUT_SCHEMA) },
+          messages: [{ role: "user", content: userMessage }],
+        }),
+        AI_TIMEOUT_MS,
+      );
 
-    const parsed = message.parsed_output;
-    if (!parsed) return null;
+      const parsed = message.parsed_output;
+      if (!parsed) {
+        aiCircuitBreaker.recordFailure();
+        return null;
+      }
 
-    return {
-      overview: parsed.overview,
-      sections: parsed.sections.map((s) => ({
-        positionLabel: s.positionLabel,
-        interpretation: s.interpretation,
-      })),
-      advice: parsed.advice,
-    };
-  } catch (err) {
-    // Refusals, rate limits, network errors, malformed output — fall back.
-    console.error("Rune reading AI generation failed:", err);
-    return null;
+      aiCircuitBreaker.recordSuccess();
+      return {
+        overview: parsed.overview,
+        sections: parsed.sections.map((s) => ({
+          positionLabel: s.positionLabel,
+          interpretation: s.interpretation,
+        })),
+        advice: parsed.advice,
+      };
+    } catch (err) {
+      const isLastAttempt = attempt === MAX_RETRIES;
+      if (isLastAttempt) {
+        aiCircuitBreaker.recordFailure();
+        console.error("Rune reading AI generation failed:", err);
+        return null;
+      }
+
+      await sleep(RETRY_BACKOFF_MS[attempt] ?? RETRY_BACKOFF_MS.at(-1) ?? 1_000);
+    }
   }
+
+  return null;
 }
