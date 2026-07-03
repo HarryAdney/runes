@@ -4,6 +4,7 @@ import { getRuneById } from "@/lib/runes";
 import { getSpreadById } from "@/lib/spreads";
 import { buildFallbackReading, buildGrounding } from "@/lib/reading";
 import { generateReadingNarrative } from "@/lib/anthropic";
+import { captureServerException } from "@/lib/errorMonitoring.server";
 import { logServerError, observeApiRequest } from "@/lib/observability";
 import { readingRateLimiter } from "@/lib/rateLimit";
 import { parseReadingRequest } from "@/lib/readingRequestSchema";
@@ -206,6 +207,11 @@ export async function POST(request: NextRequest) {
 
     return jsonResponse(reading, 200, rateLimitHeaders);
   } catch (err) {
+    captureServerException(err, {
+      requestId,
+      route: "/api/reading",
+      method: "POST",
+    });
     logServerError("reading_api_unexpected_error", {
       requestId,
       name: err instanceof Error ? err.name : "unknown",
