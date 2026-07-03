@@ -5,6 +5,7 @@ import { getSpreadById } from "@/lib/spreads";
 import { buildFallbackReading, buildGrounding } from "@/lib/reading";
 import { generateReadingNarrative } from "@/lib/anthropic";
 import { readingRateLimiter } from "@/lib/rateLimit";
+import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/turnstile";
 
 function getClientIp(request: NextRequest): string {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -81,6 +82,13 @@ export async function POST(request: NextRequest) {
     "X-RateLimit-Reset": String(Math.floor(limit.resetAt / 1000)),
   };
 
+  if (process.env.NODE_ENV === "production" && !isTurnstileConfigured()) {
+    return Response.json(
+      { error: "Challenge verification is not configured." },
+      { status: 503, headers: rateLimitHeaders },
+    );
+  }
+
   let body: ReadingRequest;
   try {
     body = (await request.json()) as ReadingRequest;
@@ -111,6 +119,29 @@ export async function POST(request: NextRequest) {
     typeof body.question === "string" && body.question.trim().length > 0
       ? body.question.trim().slice(0, 1000)
       : null;
+
+  if (isTurnstileConfigured()) {
+    const challengeToken =
+      typeof body.challengeToken === "string" ? body.challengeToken.trim() : "";
+
+    if (!challengeToken) {
+      return Response.json(
+        { error: "Challenge verification is required." },
+        { status: 400, headers: rateLimitHeaders },
+      );
+    }
+
+    const challengeOk = await verifyTurnstileToken(
+      challengeToken,
+      ip === "unknown" ? undefined : ip,
+    );
+    if (!challengeOk) {
+      return Response.json(
+        { error: "Challenge verification failed. Please try again." },
+        { status: 403, headers: rateLimitHeaders },
+      );
+    }
+  }
 
   const grounding = buildGrounding(drawn, spread);
   const narrative = await generateReadingNarrative(grounding, spread, question);
