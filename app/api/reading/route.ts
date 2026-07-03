@@ -4,6 +4,20 @@ import { getRuneById } from "@/lib/runes";
 import { getSpreadById } from "@/lib/spreads";
 import { buildFallbackReading, buildGrounding } from "@/lib/reading";
 import { generateReadingNarrative } from "@/lib/anthropic";
+import { readingRateLimiter } from "@/lib/rateLimit";
+
+function getClientIp(request: NextRequest): string {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const first = forwardedFor.split(",")[0]?.trim();
+    if (first) return first;
+  }
+
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
+  return "unknown";
+}
 
 /**
  * Re-resolve the drawn runes from the request against the server-side
@@ -44,23 +58,52 @@ function resolveDrawn(raw: unknown): DrawnRune[] | null {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  const limit = readingRateLimiter.check(`reading:${ip}`);
+  if (!limit.allowed) {
+    return Response.json(
+      { error: "Too many readings requested. Please wait and try again." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(limit.retryAfterSeconds),
+          "X-RateLimit-Limit": String(limit.limit),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.floor(limit.resetAt / 1000)),
+        },
+      },
+    );
+  }
+
+  const rateLimitHeaders = {
+    "X-RateLimit-Limit": String(limit.limit),
+    "X-RateLimit-Remaining": String(limit.remaining),
+    "X-RateLimit-Reset": String(Math.floor(limit.resetAt / 1000)),
+  };
+
   let body: ReadingRequest;
   try {
     body = (await request.json()) as ReadingRequest;
   } catch {
-    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+    return Response.json(
+      { error: "Invalid JSON body." },
+      { status: 400, headers: rateLimitHeaders },
+    );
   }
 
   const spread = getSpreadById(body.spreadId);
   if (!spread) {
-    return Response.json({ error: "Unknown spread." }, { status: 400 });
+    return Response.json(
+      { error: "Unknown spread." },
+      { status: 400, headers: rateLimitHeaders },
+    );
   }
 
   const drawn = resolveDrawn(body.drawn);
   if (!drawn || drawn.length !== spread.positions.length) {
     return Response.json(
       { error: "Drawn runes do not match the spread." },
-      { status: 400 },
+      { status: 400, headers: rateLimitHeaders },
     );
   }
 
@@ -75,7 +118,9 @@ export async function POST(request: NextRequest) {
   if (!narrative) {
     // AI layer unavailable (no key or call failed) — knowledgebase-only reading.
     const fallback = buildFallbackReading(drawn, spread, question);
-    return Response.json(fallback satisfies Reading);
+    return Response.json(fallback satisfies Reading, {
+      headers: rateLimitHeaders,
+    });
   }
 
   const reading: Reading = {
@@ -89,5 +134,5 @@ export async function POST(request: NextRequest) {
     aiAvailable: true,
   };
 
-  return Response.json(reading);
+  return Response.json(reading, { headers: rateLimitHeaders });
 }
