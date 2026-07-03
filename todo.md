@@ -6,7 +6,7 @@
 - [x] Add bot/abuse friction for the reading endpoint (captcha or equivalent challenge).
 - [x] Add request payload validation with a schema validator (strict shape + bounds checks).
 - [x] Enforce server-side timeouts/retries/circuit-breaking for AI calls to control cost and latency.
-- [ ] Add robust error handling with safe client messages and no sensitive data leakage.
+- [x] Add robust error handling with safe client messages and no sensitive data leakage.
 
 ## P1 — High Priority (Before Public Launch)
 

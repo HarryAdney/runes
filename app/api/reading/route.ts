@@ -60,11 +60,16 @@ function resolveDrawn(raw: unknown): DrawnRune[] | null {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+
   const ip = getClientIp(request);
   const limit = readingRateLimiter.check(`reading:${ip}`);
   if (!limit.allowed) {
     return Response.json(
-      { error: "Too many readings requested. Please wait and try again." },
+      {
+        error: "Too many readings requested. Please wait and try again.",
+        requestId,
+      },
       {
         status: 429,
         headers: {
@@ -72,6 +77,7 @@ export async function POST(request: NextRequest) {
           "X-RateLimit-Limit": String(limit.limit),
           "X-RateLimit-Remaining": "0",
           "X-RateLimit-Reset": String(Math.floor(limit.resetAt / 1000)),
+          "X-Request-Id": requestId,
         },
       },
     );
@@ -81,100 +87,109 @@ export async function POST(request: NextRequest) {
     "X-RateLimit-Limit": String(limit.limit),
     "X-RateLimit-Remaining": String(limit.remaining),
     "X-RateLimit-Reset": String(Math.floor(limit.resetAt / 1000)),
+    "X-Request-Id": requestId,
   };
 
-  if (process.env.NODE_ENV === "production" && !isTurnstileConfigured()) {
-    return Response.json(
-      { error: "Challenge verification is not configured." },
-      { status: 503, headers: rateLimitHeaders },
+  const errorResponse = (message: string, status: number) =>
+    Response.json(
+      {
+        error: message,
+        requestId,
+      },
+      {
+        status,
+        headers: rateLimitHeaders,
+      },
     );
-  }
 
-  let rawBody: unknown;
   try {
-    rawBody = await request.json();
-  } catch {
-    return Response.json(
-      { error: "Invalid JSON body." },
-      { status: 400, headers: rateLimitHeaders },
-    );
-  }
-
-  const parsedBody = parseReadingRequest(rawBody);
-  if (!parsedBody.success) {
-    return Response.json(
-      { error: "Invalid request payload." },
-      { status: 400, headers: rateLimitHeaders },
-    );
-  }
-
-  const body = parsedBody.data;
-
-  const spread = getSpreadById(body.spreadId);
-  if (!spread) {
-    return Response.json(
-      { error: "Unknown spread." },
-      { status: 400, headers: rateLimitHeaders },
-    );
-  }
-
-  const drawn = resolveDrawn(body.drawn);
-  if (!drawn || drawn.length !== spread.positions.length) {
-    return Response.json(
-      { error: "Drawn runes do not match the spread." },
-      { status: 400, headers: rateLimitHeaders },
-    );
-  }
-
-  const question =
-    typeof body.question === "string" && body.question.trim().length > 0
-      ? body.question.trim().slice(0, 1000)
-      : null;
-
-  if (isTurnstileConfigured()) {
-    const challengeToken =
-      typeof body.challengeToken === "string" ? body.challengeToken.trim() : "";
-
-    if (!challengeToken) {
-      return Response.json(
-        { error: "Challenge verification is required." },
-        { status: 400, headers: rateLimitHeaders },
-      );
+    if (process.env.NODE_ENV === "production" && !isTurnstileConfigured()) {
+      return errorResponse("Challenge verification is not configured.", 503);
     }
 
-    const challengeOk = await verifyTurnstileToken(
-      challengeToken,
-      ip === "unknown" ? undefined : ip,
-    );
-    if (!challengeOk) {
-      return Response.json(
-        { error: "Challenge verification failed. Please try again." },
-        { status: 403, headers: rateLimitHeaders },
-      );
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return errorResponse("Invalid JSON body.", 400);
     }
-  }
 
-  const grounding = buildGrounding(drawn, spread);
-  const narrative = await generateReadingNarrative(grounding, spread, question);
+    const parsedBody = parseReadingRequest(rawBody);
+    if (!parsedBody.success) {
+      return errorResponse("Invalid request payload.", 400);
+    }
 
-  if (!narrative) {
-    // AI layer unavailable (no key or call failed) — knowledgebase-only reading.
-    const fallback = buildFallbackReading(drawn, spread, question);
-    return Response.json(fallback satisfies Reading, {
-      headers: rateLimitHeaders,
+    const body = parsedBody.data;
+
+    const spread = getSpreadById(body.spreadId);
+    if (!spread) {
+      return errorResponse("Unknown spread.", 400);
+    }
+
+    const drawn = resolveDrawn(body.drawn);
+    if (!drawn || drawn.length !== spread.positions.length) {
+      return errorResponse("Drawn runes do not match the spread.", 400);
+    }
+
+    const question =
+      typeof body.question === "string" && body.question.trim().length > 0
+        ? body.question.trim().slice(0, 1000)
+        : null;
+
+    if (isTurnstileConfigured()) {
+      const challengeToken =
+        typeof body.challengeToken === "string"
+          ? body.challengeToken.trim()
+          : "";
+
+      if (!challengeToken) {
+        return errorResponse("Challenge verification is required.", 400);
+      }
+
+      const challengeOk = await verifyTurnstileToken(
+        challengeToken,
+        ip === "unknown" ? undefined : ip,
+      );
+      if (!challengeOk) {
+        return errorResponse(
+          "Challenge verification failed. Please try again.",
+          403,
+        );
+      }
+    }
+
+    const grounding = buildGrounding(drawn, spread);
+    const narrative = await generateReadingNarrative(
+      grounding,
+      spread,
+      question,
+    );
+
+    if (!narrative) {
+      // AI layer unavailable (no key or call failed) — knowledgebase-only reading.
+      const fallback = buildFallbackReading(drawn, spread, question);
+      return Response.json(fallback satisfies Reading, {
+        headers: rateLimitHeaders,
+      });
+    }
+
+    const reading: Reading = {
+      spreadName: spread.name,
+      question,
+      drawn,
+      grounding,
+      overview: narrative.overview,
+      sections: narrative.sections,
+      advice: narrative.advice,
+      aiAvailable: true,
+    };
+
+    return Response.json(reading, { headers: rateLimitHeaders });
+  } catch (err) {
+    console.error("reading-api unexpected error", {
+      requestId,
+      name: err instanceof Error ? err.name : "unknown",
     });
+    return errorResponse("An unexpected error occurred. Please try again.", 500);
   }
-
-  const reading: Reading = {
-    spreadName: spread.name,
-    question,
-    drawn,
-    grounding,
-    overview: narrative.overview,
-    sections: narrative.sections,
-    advice: narrative.advice,
-    aiAvailable: true,
-  };
-
-  return Response.json(reading, { headers: rateLimitHeaders });
 }
