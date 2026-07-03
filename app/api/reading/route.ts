@@ -1,10 +1,11 @@
 import type { NextRequest } from "next/server";
-import type { DrawnRune, Reading, ReadingRequest } from "@/types";
+import type { DrawnRune, Reading } from "@/types";
 import { getRuneById } from "@/lib/runes";
 import { getSpreadById } from "@/lib/spreads";
 import { buildFallbackReading, buildGrounding } from "@/lib/reading";
 import { generateReadingNarrative } from "@/lib/anthropic";
 import { readingRateLimiter } from "@/lib/rateLimit";
+import { parseReadingRequest } from "@/lib/readingRequestSchema";
 import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/turnstile";
 
 function getClientIp(request: NextRequest): string {
@@ -89,15 +90,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: ReadingRequest;
+  let rawBody: unknown;
   try {
-    body = (await request.json()) as ReadingRequest;
+    rawBody = await request.json();
   } catch {
     return Response.json(
       { error: "Invalid JSON body." },
       { status: 400, headers: rateLimitHeaders },
     );
   }
+
+  const parsedBody = parseReadingRequest(rawBody);
+  if (!parsedBody.success) {
+    return Response.json(
+      { error: "Invalid request payload." },
+      { status: 400, headers: rateLimitHeaders },
+    );
+  }
+
+  const body = parsedBody.data;
 
   const spread = getSpreadById(body.spreadId);
   if (!spread) {
