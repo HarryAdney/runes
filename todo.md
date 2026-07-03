@@ -13,7 +13,7 @@
 - [x] Add observability: structured logs, request IDs, endpoint latency, error rate metrics.
 - [x] Integrate production error monitoring/alerting (e.g., Sentry) for API + app runtime errors.
 - [x] Add integration tests for `/api/reading` success, invalid input, and fallback paths.
-- [ ] Add E2E tests for core user journey (home -> reading -> result -> draw again).
+- [x] Add E2E tests for core user journey (home -> reading -> result -> draw again).
 - [ ] Add security headers (CSP, frame-ancestors, referrer-policy, etc.) via Next config/middleware.
 
 ## P2 — Medium Priority (Launch Polish)
