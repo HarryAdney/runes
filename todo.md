@@ -2,8 +2,8 @@
 
 ## P0 — Critical (Do First)
 
-- [ ] Add API rate limiting on `POST /api/reading` (per-IP + short burst control).
-- [ ] Add bot/abuse friction for the reading endpoint (captcha or equivalent challenge).
+- [x] Add API rate limiting on `POST /api/reading` (per-IP + short burst control).
+- [x] Add bot/abuse friction for the reading endpoint (captcha or equivalent challenge).
 - [ ] Add request payload validation with a schema validator (strict shape + bounds checks).
 - [ ] Enforce server-side timeouts/retries/circuit-breaking for AI calls to control cost and latency.
 - [ ] Add robust error handling with safe client messages and no sensitive data leakage.

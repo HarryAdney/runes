@@ -85,5 +85,6 @@ export interface Reading {
 export interface ReadingRequest {
   spreadId: string;
   question?: string | null;
+  challengeToken?: string | null;
   drawn: DrawnRune[];
 }

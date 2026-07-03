@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import type { DrawnRune, Reading } from "@/types";
 import { drawForSpread } from "@/lib/draw";
 import { getSpreadById, DEFAULT_SPREAD_ID } from "@/lib/spreads";
@@ -11,11 +12,40 @@ const spread = getSpreadById(DEFAULT_SPREAD_ID)!;
 
 type Status = "idle" | "loading" | "done" | "error";
 
+declare global {
+  interface Window {
+    onTurnstileVerified?: (token: string) => void;
+    onTurnstileExpired?: () => void;
+    turnstile?: {
+      reset: () => void;
+    };
+  }
+}
+
 export default function ReadingPage() {
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
+  const challengeEnabled = turnstileSiteKey.length > 0;
   const [question, setQuestion] = useState("");
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [reading, setReading] = useState<Reading | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!challengeEnabled) return;
+
+    window.onTurnstileVerified = (token: string) => {
+      setChallengeToken(token);
+    };
+    window.onTurnstileExpired = () => {
+      setChallengeToken(null);
+    };
+
+    return () => {
+      delete window.onTurnstileVerified;
+      delete window.onTurnstileExpired;
+    };
+  }, [challengeEnabled]);
 
   async function cast() {
     setStatus("loading");
@@ -33,6 +63,7 @@ export default function ReadingPage() {
         body: JSON.stringify({
           spreadId: spread.id,
           question: trimmed.length > 0 ? trimmed : null,
+          challengeToken,
           drawn,
         }),
       });
@@ -48,6 +79,10 @@ export default function ReadingPage() {
       console.error(err);
       setError("The runes are quiet right now. Please try casting again.");
       setStatus("error");
+      if (challengeEnabled) {
+        window.turnstile?.reset();
+        setChallengeToken(null);
+      }
     }
   }
 
@@ -87,13 +122,29 @@ export default function ReadingPage() {
 
           <button
             onClick={cast}
-            disabled={status === "loading"}
+            disabled={status === "loading" || (challengeEnabled && !challengeToken)}
             className="w-full rounded-full bg-accent px-8 py-3 font-medium text-background transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-60"
           >
             {status === "loading"
               ? "Casting the runes…"
               : "Draw three runes"}
           </button>
+
+          {challengeEnabled && (
+            <>
+              <Script
+                src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+                strategy="afterInteractive"
+              />
+              <div
+                className="cf-turnstile"
+                data-sitekey={turnstileSiteKey}
+                data-callback="onTurnstileVerified"
+                data-expired-callback="onTurnstileExpired"
+                data-theme="dark"
+              />
+            </>
+          )}
 
           {error && (
             <p className="text-center text-sm text-accent">{error}</p>
