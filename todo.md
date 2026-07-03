@@ -10,7 +10,7 @@
 
 ## P1 — High Priority (Before Public Launch)
 
-- [ ] Add observability: structured logs, request IDs, endpoint latency, error rate metrics.
+- [x] Add observability: structured logs, request IDs, endpoint latency, error rate metrics.
 - [ ] Integrate production error monitoring/alerting (e.g., Sentry) for API + app runtime errors.
 - [ ] Add integration tests for `/api/reading` success, invalid input, and fallback paths.
 - [ ] Add E2E tests for core user journey (home -> reading -> result -> draw again).
