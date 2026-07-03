@@ -4,6 +4,7 @@ import { getRuneById } from "@/lib/runes";
 import { getSpreadById } from "@/lib/spreads";
 import { buildFallbackReading, buildGrounding } from "@/lib/reading";
 import { generateReadingNarrative } from "@/lib/anthropic";
+import { logServerError, observeApiRequest } from "@/lib/observability";
 import { readingRateLimiter } from "@/lib/rateLimit";
 import { parseReadingRequest } from "@/lib/readingRequestSchema";
 import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/turnstile";
@@ -60,25 +61,48 @@ function resolveDrawn(raw: unknown): DrawnRune[] | null {
 }
 
 export async function POST(request: NextRequest) {
+  const startedAtMs = Date.now();
   const requestId = crypto.randomUUID();
 
   const ip = getClientIp(request);
+
+  const jsonResponse = (
+    payload: unknown,
+    status: number,
+    headers: Record<string, string>,
+  ) => {
+    const durationMs = Date.now() - startedAtMs;
+    observeApiRequest({
+      route: "/api/reading",
+      method: "POST",
+      requestId,
+      status,
+      durationMs,
+      context: {
+        ipKnown: ip !== "unknown",
+      },
+    });
+
+    return Response.json(payload, {
+      status,
+      headers,
+    });
+  };
+
   const limit = readingRateLimiter.check(`reading:${ip}`);
   if (!limit.allowed) {
-    return Response.json(
+    return jsonResponse(
       {
         error: "Too many readings requested. Please wait and try again.",
         requestId,
       },
+      429,
       {
-        status: 429,
-        headers: {
-          "Retry-After": String(limit.retryAfterSeconds),
-          "X-RateLimit-Limit": String(limit.limit),
-          "X-RateLimit-Remaining": "0",
-          "X-RateLimit-Reset": String(Math.floor(limit.resetAt / 1000)),
-          "X-Request-Id": requestId,
-        },
+        "Retry-After": String(limit.retryAfterSeconds),
+        "X-RateLimit-Limit": String(limit.limit),
+        "X-RateLimit-Remaining": "0",
+        "X-RateLimit-Reset": String(Math.floor(limit.resetAt / 1000)),
+        "X-Request-Id": requestId,
       },
     );
   }
@@ -91,15 +115,13 @@ export async function POST(request: NextRequest) {
   };
 
   const errorResponse = (message: string, status: number) =>
-    Response.json(
+    jsonResponse(
       {
         error: message,
         requestId,
       },
-      {
-        status,
-        headers: rateLimitHeaders,
-      },
+      status,
+      rateLimitHeaders,
     );
 
   try {
@@ -168,9 +190,7 @@ export async function POST(request: NextRequest) {
     if (!narrative) {
       // AI layer unavailable (no key or call failed) — knowledgebase-only reading.
       const fallback = buildFallbackReading(drawn, spread, question);
-      return Response.json(fallback satisfies Reading, {
-        headers: rateLimitHeaders,
-      });
+      return jsonResponse(fallback satisfies Reading, 200, rateLimitHeaders);
     }
 
     const reading: Reading = {
@@ -184,11 +204,13 @@ export async function POST(request: NextRequest) {
       aiAvailable: true,
     };
 
-    return Response.json(reading, { headers: rateLimitHeaders });
+    return jsonResponse(reading, 200, rateLimitHeaders);
   } catch (err) {
-    console.error("reading-api unexpected error", {
+    logServerError("reading_api_unexpected_error", {
       requestId,
       name: err instanceof Error ? err.name : "unknown",
+      route: "/api/reading",
+      method: "POST",
     });
     return errorResponse("An unexpected error occurred. Please try again.", 500);
   }
