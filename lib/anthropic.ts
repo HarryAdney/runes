@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { jsonSchemaOutputFormat } from "@anthropic-ai/sdk/helpers/json-schema";
 import type { GroundingEntry, ReadingSection, Spread } from "@/types";
 import { createCircuitBreaker } from "@/lib/circuitBreaker";
+import { captureServerException } from "@/lib/errorMonitoring.server";
 import { groundingToPromptText } from "@/lib/reading";
 
 const MODEL = "claude-opus-4-8";
@@ -162,6 +163,11 @@ export async function generateReadingNarrative(
       const isLastAttempt = attempt === MAX_RETRIES;
       if (isLastAttempt) {
         aiCircuitBreaker.recordFailure();
+        captureServerException(err, {
+          operation: "generateReadingNarrative",
+          model: MODEL,
+          attempt,
+        });
         console.error("Rune reading AI generation failed:", err);
         return null;
       }
