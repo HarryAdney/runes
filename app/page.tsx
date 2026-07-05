@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SPREADS } from "@/lib/spreads";
+
+export const metadata: Metadata = {
+  title: "Elder Futhark Rune Readings",
+  description:
+    "Draw the Elder Futhark and receive a reflective reading grounded in traditional rune meanings.",
+};
 
 export default function Home() {
   const runeGlyphs = "ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛇ ᛈ ᛉ ᛋ ᛏ ᛒ ᛖ ᛗ ᛚ ᛜ ᛞ ᛟ";

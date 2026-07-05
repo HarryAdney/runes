@@ -18,9 +18,9 @@
 
 ## P2 — Medium Priority (Launch Polish)
 
-- [ ] Expand SEO metadata (Open Graph, Twitter cards, canonical, robots directives).
-- [ ] Add `robots.txt` and `sitemap.xml`.
-- [ ] Add legal/compliance pages (privacy policy, terms, clearer entertainment disclaimer).
+- [x] Expand SEO metadata (Open Graph, Twitter cards, canonical, robots directives).
+- [x] Add `robots.txt` and `sitemap.xml`.
+- [x] Add legal/compliance pages (privacy policy, terms, clearer entertainment disclaimer).
 - [ ] Review and track dependency vulnerabilities from `npm audit`; patch non-breaking updates.
 - [ ] Define incident response basics: on-call contact, rollback steps, and service status messaging.
 

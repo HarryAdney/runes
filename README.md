@@ -35,11 +35,15 @@ Open <http://localhost:3000>
 | Variable            | Required | Notes                                                                 |
 | ------------------- | -------- | --------------------------------------------------------------------- |
 | `ANTHROPIC_API_KEY` | No\*     | Enables the AI interpretation layer. Model: `claude-opus-4-8`.        |
+| `NEXT_PUBLIC_SITE_URL` | Recommended | Canonical site origin used for SEO metadata, `robots.txt`, and `sitemap.xml`. |
 
 \* Without a key (or if the API call fails), the site **still works** — readings
 fall back to the runes' traditional meanings, just without the personalised
 interpretation. This makes the site demoable with no key and resilient in
 production.
+
+If `NEXT_PUBLIC_SITE_URL` is not set, the app falls back to deployment-provided
+Vercel URLs when available, then `http://localhost:3000` in local development.
 
 ## Scripts
 
