@@ -32,10 +32,14 @@ Open <http://localhost:3000>
 
 ### Environment
 
-| Variable            | Required | Notes                                                                 |
-| ------------------- | -------- | --------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY` | No\*     | Enables the AI interpretation layer. Model: `claude-opus-4-8`.        |
-| `NEXT_PUBLIC_SITE_URL` | Recommended | Canonical site origin used for SEO metadata, `robots.txt`, and `sitemap.xml`. |
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY` | No\* | Enables the AI interpretation layer. Model: `claude-opus-4-8`. |
+| `TURNSTILE_SECRET_KEY` | Optional | Server-side Turnstile secret for abuse prevention. |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Optional | Client-side Turnstile widget key. Add both values to enable the challenge. |
+| `SENTRY_DSN` | Optional | Server-side error capture for API/runtime failures. |
+| `NEXT_PUBLIC_SENTRY_DSN` | Optional | Browser/runtime error capture for frontend issues. |
+| `NEXT_PUBLIC_SITE_URL` | Recommended | Canonical site origin for SEO metadata, `robots.txt`, and `sitemap.xml`. |
 
 \* Without a key (or if the API call fails), the site **still works** — readings
 fall back to the runes' traditional meanings, just without the personalised
