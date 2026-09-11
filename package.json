@@ -14,7 +14,7 @@
     "@anthropic-ai/sdk": "^0.105.0",
     "@sentry/browser": "^10.63.0",
     "@sentry/node": "^10.63.0",
-    "next": "^16.2.10",
+    "next": "^16.3.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "^4.4.3"
