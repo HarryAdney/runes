@@ -34,7 +34,7 @@ Open <http://localhost:3000>
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | No\* | Enables the AI interpretation layer. Model: `claude-opus-4-8`. |
+| `ANTHROPIC_API_KEY` | No\* | Enables the AI interpretation layer. Model: `claude-sonnet-5-5`. |
 | `TURNSTILE_SECRET_KEY` | Optional | Server-side Turnstile secret for abuse prevention. |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Optional | Client-side Turnstile widget key. Add both values to enable the challenge. |
 | `SENTRY_DSN` | Optional | Server-side error capture for API/runtime failures. |

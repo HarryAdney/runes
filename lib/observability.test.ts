@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearObservabilityState,
+  logAiUsage,
   observeApiRequest,
 } from "@/lib/observability";
 
@@ -76,5 +77,44 @@ describe("observeApiRequest", () => {
 
     expect(infoSpy).not.toHaveBeenCalled();
     expect(errSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("logAiUsage", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("logs token usage with an estimated cost for known models", () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    logAiUsage({
+      model: "claude-haiku-5-5",
+      effort: "low",
+      attempt: 0,
+      inputTokens: 1_000_000,
+      outputTokens: 1_000_000,
+      requestId: "r1",
+    });
+
+    const payload = JSON.parse(infoSpy.mock.calls[0][0] as string);
+    expect(payload.event).toBe("ai_usage");
+    expect(payload.requestId).toBe("r1");
+    expect(payload.estimatedCostUsd).toBe(0.6);
+  });
+
+  it("logs a null cost for models without pricing", () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    logAiUsage({
+      model: "unknown-model",
+      effort: "low",
+      attempt: 0,
+      inputTokens: 100,
+      outputTokens: 100,
+    });
+
+    const payload = JSON.parse(infoSpy.mock.calls[0][0] as string);
+    expect(payload.estimatedCostUsd).toBeNull();
   });
 });

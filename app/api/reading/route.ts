@@ -186,6 +186,7 @@ export async function POST(request: NextRequest) {
       grounding,
       spread,
       question,
+      requestId,
     );
 
     if (!narrative) {
