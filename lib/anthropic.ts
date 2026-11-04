@@ -1,5 +1,6 @@
-// Server-only module: imported exclusively from the /api/reading route handler.
-// It reads ANTHROPIC_API_KEY and must never be imported into a client component.
+// Server-only module: imported by the /api/reading route handler and the
+// /reading server page. It reads ANTHROPIC_API_KEY and must never be imported
+// into a client component.
 import Anthropic from "@anthropic-ai/sdk";
 import { jsonSchemaOutputFormat } from "@anthropic-ai/sdk/helpers/json-schema";
 import type { GroundingEntry, ReadingSection, Spread } from "@/types";

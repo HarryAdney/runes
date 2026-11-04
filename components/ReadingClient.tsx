@@ -22,7 +22,12 @@ declare global {
   }
 }
 
-export default function ReadingPage() {
+interface ReadingClientProps {
+  /** Whether the server has the AI layer configured. */
+  aiEnabled: boolean;
+}
+
+export default function ReadingClient({ aiEnabled }: ReadingClientProps) {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
   const challengeEnabled = turnstileSiteKey.length > 0;
   const [question, setQuestion] = useState("");
@@ -105,20 +110,23 @@ export default function ReadingPage() {
 
       {status !== "done" && (
         <div className="space-y-5">
-          <label className="block space-y-2">
-            <span className="font-display text-lg text-foreground">
-              Your question or intention{" "}
-              <span className="text-sm text-muted">(optional)</span>
-            </span>
-            <textarea
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              maxLength={1000}
-              rows={3}
-              placeholder="What is on your mind? Leave blank for a general reading."
-              className="w-full resize-none rounded-xl border border-border bg-background-2/60 p-4 text-foreground placeholder:text-muted/60 focus:border-accent-soft focus:outline-none"
-            />
-          </label>
+          {/* Only the AI layer uses the question, so don't ask for it otherwise. */}
+          {aiEnabled && (
+            <label className="block space-y-2">
+              <span className="font-display text-lg text-foreground">
+                Your question or intention{" "}
+                <span className="text-sm text-muted">(optional)</span>
+              </span>
+              <textarea
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                maxLength={1000}
+                rows={3}
+                placeholder="What is on your mind? Leave blank for a general reading."
+                className="w-full resize-none rounded-xl border border-border bg-background-2/60 p-4 text-foreground placeholder:text-muted/60 focus:border-accent-soft focus:outline-none"
+              />
+            </label>
+          )}
 
           <button
             onClick={cast}
