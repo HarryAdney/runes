@@ -29,3 +29,20 @@
 - [ ] Get a domain and production hosting configuration finalized.
 - [ ] Add ad placements only after performance + policy checks pass.
 - [ ] Start promotion/advertising once reliability KPIs are stable.
+
+
+
+## Deploy to Vercel
+
+This project is a standard Next.js app, so you can deploy it directly to Vercel—no static export or custom Vercel configuration is needed.
+
+Push the project to GitHub, then in Vercel choose Add New → Project and import the repository.
+Keep the detected Next.js framework and default build settings (npm run build). Leave the output directory at its default.
+In Project Settings → Environment Variables, add:
+TURNSTILE_SECRET_KEY and NEXT_PUBLIC_TURNSTILE_SITE_KEY — required for production readings. Create a Cloudflare Turnstile widget and configure it for the domain(s) you’ll use. Set these before building, especially the NEXT_PUBLIC_ key.
+ANTHROPIC_API_KEY — optional; without it, readings still work using the traditional meanings.
+NEXT_PUBLIC_SITE_URL — recommended; set it to your production URL, such as https://yourdomain.com.
+SENTRY_DSN and NEXT_PUBLIC_SENTRY_DSN — optional.
+Assign variables to the environments you’ll use. Preview deployments run in production mode too, so add the Turnstile keys to Preview if you want readings to work there. Redeploy after changing environment variables.
+After deployment, test a reading on the production URL and confirm the Turnstile challenge works. Add a custom domain in Vercel if needed.
+The project’s environment-variable notes are in .env.example and README.md. One caveat: its rate limiter is in memory, so on Vercel it is per server instance, not a dependable global limit; use shared storage if you later need strict cross-instance rate limiting.
