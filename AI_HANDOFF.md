@@ -46,7 +46,7 @@ Still open:
 - App Router structure under app/.
 - Main pages:
   - app/page.tsx (landing)
-  - app/reading/page.tsx (client reading experience)
+  - app/reading/page.tsx (server page; passes aiEnabled to components/ReadingClient.tsx, the client reading experience)
   - app/privacy/page.tsx
   - app/terms/page.tsx
   - app/disclaimer/page.tsx
@@ -62,7 +62,7 @@ Still open:
   - per-IP rate limiting
   - JSON parsing and schema validation
   - spread and draw consistency checks
-  - optional Turnstile verification
+  - Turnstile verification (required in production: returns 503 if not configured; optional in development)
   - grounding construction
   - AI narrative generation attempt
   - fallback reading if AI unavailable

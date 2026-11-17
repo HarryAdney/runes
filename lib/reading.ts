@@ -43,6 +43,7 @@ export function buildFallbackReading(
   drawn: DrawnRune[],
   spread: Spread,
   question: string | null,
+  aiEnabled: boolean,
 ): Reading {
   return {
     spreadName: spread.name,
@@ -53,6 +54,7 @@ export function buildFallbackReading(
     sections: [],
     advice: null,
     aiAvailable: false,
+    aiEnabled,
   };
 }
 

@@ -67,7 +67,7 @@ These are operator decisions, not engineering tasks.
 
 The privacy, terms, and disclaimer pages contain launch-ready scaffolding text. A qualified reviewer should read and approve each page before Runecast is publicly accessible.
 
-**Owner:** Operator / legal reviewer  
+**Owner:** Operator / legal reviewer.
 **Blocking:** Yes — do not launch to the public without approval.
 
 ### 2. Incident response assignment
@@ -79,7 +79,7 @@ No finalized runbook exists. Define and record:
 - Rollback steps (redeploy previous Vercel deployment).
 - User-facing status message template.
 
-**Owner:** Operator  
+**Owner:** Operator
 **Blocking:** Recommended before launch; risk is slower response to production incidents.
 
 ---
@@ -88,7 +88,7 @@ No finalized runbook exists. Define and record:
 
 These are not launch-blocking. Pick them up after the app is stable and live.
 
-- Finalize domain and production hosting configuration.
+- ~~Finalize domain and production hosting configuration.~~ Done 17 Nov 2026: Vercel + `runemaiden.app` (OpenProvider DNS → Vercel). See README → Deployment.
 - Add ad placements only after performance and policy checks pass.
 - Begin promotion/advertising once reliability KPIs are stable.
 - Revisit rate limit and circuit breaker state management if scaling beyond a single instance (current in-memory state is acceptable for early launch).
