@@ -26,7 +26,12 @@
 
 ## P3 — Growth / Business
 
-- [ ] Get a domain and production hosting configuration finalized.
+- [x] Get a domain and production hosting configuration finalized.
+  - Hosted on Vercel (`runes-bay.vercel.app`); `runemaiden.app` registered at OpenProvider and pointed at Vercel through A/`www` records (17 Nov 2026).
+  - Turnstile is live; the widget hostnames are `runes-bay.vercel.app`, `runemaiden.app` and `www.runemaiden.app`.
+  - [ ] Confirm `runemaiden.app` shows "Valid Configuration" in Vercel and that a reading works there.
+  - [ ] Add `ANTHROPIC_API_KEY` in Vercel (Secret type) when testing ends. It's left blank on purpose for now.
+  - [ ] Optional: add Preview deployment hostnames to Turnstile, or use a separate Preview widget.
 - [ ] Add ad placements only after performance + policy checks pass.
 - [ ] Start promotion/advertising once reliability KPIs are stable.
 
@@ -37,7 +42,7 @@ This project is a standard Next.js app, so you can deploy it directly to Vercel�
 Push the project to GitHub, then in Vercel choose Add New → Project and import the repository.
 Keep the detected Next.js framework and default build settings (npm run build). Leave the output directory at its default.
 In Project Settings → Environment Variables, add:
-TURNSTILE_SECRET_KEY and NEXT_PUBLIC_TURNSTILE_SITE_KEY — required for production readings. Create a Cloudflare Turnstile widget and configure it for the domain(s) you’ll use. Set these before building, especially the NEXT_PUBLIC_ key.
+TURNSTILE_SECRET_KEY and NEXT_PUBLIC_TURNSTILE_SITE_KEY — required for production readings. Create a Cloudflare Turnstile widget and add every hostname you’ll serve from (bare hostnames, e.g. `runes-bay.vercel.app`, `runemaiden.app`) under Hostname management. A missing hostname causes Turnstile error 110200. Store the secret in Vercel as the Secret type, and never commit real values to `.env.example`. Set these before building, especially the NEXT_PUBLIC_ key.
 ANTHROPIC_API_KEY — optional; without it, readings still work using the traditional meanings.
 NEXT_PUBLIC_SITE_URL — recommended; set it to your production URL, such as <https://runemaiden.app>.
 SENTRY_DSN and NEXT_PUBLIC_SENTRY_DSN — optional.
