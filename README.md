@@ -34,9 +34,9 @@ Open <http://localhost:3000>
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | No\* | Enables the AI interpretation layer. Model: `claude-opus-4-8`. |
-| `TURNSTILE_SECRET_KEY` | Optional | Server-side Turnstile secret for abuse prevention. |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Optional | Client-side Turnstile widget key. Add both values to enable the challenge. |
+| `ANTHROPIC_API_KEY` | No\* | Enables the AI interpretation layer. Model: `claude-haiku-5-5`. |
+| `TURNSTILE_SECRET_KEY` | Production: yes | Server-side Turnstile secret for abuse prevention. In production, readings fail with a 503 until both Turnstile values are set. Optional in development. |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Production: yes | Client-side Turnstile widget key. Must be set before `npm run build`, because `NEXT_PUBLIC_` values are inlined at build time. |
 | `SENTRY_DSN` | Optional | Server-side error capture for API/runtime failures. |
 | `NEXT_PUBLIC_SENTRY_DSN` | Optional | Browser/runtime error capture for frontend issues. |
 | `NEXT_PUBLIC_SITE_URL` | Recommended | Canonical site origin for SEO metadata, `robots.txt`, and `sitemap.xml`. |

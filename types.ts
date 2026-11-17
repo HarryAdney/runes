@@ -79,6 +79,8 @@ export interface Reading {
   advice: string | null;
   /** False when the reading was assembled from the knowledgebase only. */
   aiAvailable: boolean;
+  /** True when the AI layer is configured, even if this reading's call failed. */
+  aiEnabled: boolean;
 }
 
 /** Request body for POST /api/reading. */

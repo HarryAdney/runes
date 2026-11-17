@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/reading/route";
-import { generateReadingNarrative } from "@/lib/anthropic";
+import { generateReadingNarrative, isAiConfigured } from "@/lib/anthropic";
 
 vi.mock("@/lib/anthropic", () => ({
   generateReadingNarrative: vi.fn(),
+  isAiConfigured: vi.fn(() => true),
 }));
 
 const mockedGenerateReadingNarrative = vi.mocked(generateReadingNarrative);
+const mockedIsAiConfigured = vi.mocked(isAiConfigured);
 
 function createRequest(body: unknown): NextRequest {
   const request = new Request("http://localhost:3000/api/reading", {
@@ -77,6 +79,28 @@ describe("POST /api/reading", () => {
     expect(data.advice).toBeNull();
     expect(data.sections).toHaveLength(0);
     expect(data.grounding).toHaveLength(3);
+  });
+
+  it("flags a failed AI call as enabled so the UI can show a notice", async () => {
+    mockedIsAiConfigured.mockReturnValue(true);
+    mockedGenerateReadingNarrative.mockResolvedValue(null);
+
+    const res = await POST(createRequest(validBody()));
+    const data = (await res.json()) as { aiAvailable: boolean; aiEnabled: boolean };
+
+    expect(data.aiAvailable).toBe(false);
+    expect(data.aiEnabled).toBe(true);
+  });
+
+  it("flags AI as not enabled when no key is configured", async () => {
+    mockedIsAiConfigured.mockReturnValue(false);
+    mockedGenerateReadingNarrative.mockResolvedValue(null);
+
+    const res = await POST(createRequest(validBody()));
+    const data = (await res.json()) as { aiAvailable: boolean; aiEnabled: boolean };
+
+    expect(data.aiAvailable).toBe(false);
+    expect(data.aiEnabled).toBe(false);
   });
 
   it("returns 400 for invalid JSON payload", async () => {

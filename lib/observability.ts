@@ -78,6 +78,50 @@ export function observeApiRequest(input: ApiObservationInput): EndpointMetrics {
   return metrics;
 }
 
+interface AiUsageInput {
+  model: string;
+  effort: string;
+  attempt: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens?: number | null;
+  cacheCreationInputTokens?: number | null;
+  requestId?: string;
+}
+
+// USD per million tokens (input, output). Used only for the cost estimate in
+// logs; update when pricing or the model changes. Unknown models log no cost.
+const MODEL_PRICING_PER_MTOK: Record<string, { input: number; output: number }> = {
+  "claude-haiku-5-5": { input: 0.1, output: 0.5 },
+  "claude-sonnet-5-5": { input: 2, output: 10 },
+};
+
+/**
+ * Log token usage for a single AI call. Every attempt is billed, including
+ * ones whose output fails to parse, so call this once per completed response.
+ * Thinking tokens are included in outputTokens.
+ */
+export function logAiUsage(input: AiUsageInput): void {
+  const pricing = MODEL_PRICING_PER_MTOK[input.model];
+  const estimatedCostUsd = pricing
+    ? Math.round(
+        ((input.inputTokens * pricing.input + input.outputTokens * pricing.output) /
+          1_000_000) *
+          1_000_000,
+      ) / 1_000_000
+    : null;
+
+  console.info(
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      level: "info",
+      event: "ai_usage",
+      ...input,
+      estimatedCostUsd,
+    }),
+  );
+}
+
 export function logServerError(event: string, data: Record<string, unknown>): void {
   console.error(
     JSON.stringify({
