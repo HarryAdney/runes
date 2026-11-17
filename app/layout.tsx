@@ -80,6 +80,9 @@ export default function RootLayout({
               Readings are for reflection and entertainment, not a prediction of fixed events.
             </p>
             <nav className="flex flex-wrap gap-x-5 gap-y-2 text-foreground/80">
+              <Link className="hover:text-accent" href="/">
+                Home
+              </Link>
               <Link className="hover:text-accent" href="/privacy">
                 Privacy
               </Link>
