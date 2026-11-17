@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Geist, Cormorant_Garamond } from "next/font/google";
 import ClientErrorMonitor from "@/components/ClientErrorMonitor";
 import { getSiteOrigin, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
@@ -61,11 +62,16 @@ export const metadata: Metadata = {
   category: "lifestyle",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // The CSP uses a per-request nonce (see proxy.ts), which Next.js can only
+  // apply to dynamically rendered pages. Static HTML would carry no nonce and
+  // every script would be blocked.
+  await connection();
+
   return (
     <html
       lang="en"
