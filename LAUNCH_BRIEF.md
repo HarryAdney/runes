@@ -33,7 +33,7 @@ A Next.js 16 App Router web app for reflective Elder Futhark rune readings. User
 - Production error monitoring integration (Sentry) for both server and client.
 - Integration tests for `/api/reading` (success, invalid input, fallback paths).
 - E2E test for the core user journey (home → reading → result → draw again).
-- Security headers via `proxy.ts`: CSP, `frame-ancestors`, referrer policy, etc.
+- Security headers via `proxy.ts`: CSP, `frame-ancestors`, referrer policy, etc. The CSP uses a per-request nonce with `'strict-dynamic'` (no `'unsafe-inline'` in `script-src`), so all pages render dynamically.
 
 ### P2 — Launch Polish (all done)
 

@@ -84,6 +84,12 @@ Still open:
 - Turnstile verification: lib/turnstile.ts
 - Circuit breaker: lib/circuitBreaker.ts
 - Security headers via proxy: proxy.ts
+- Content Security Policy is nonce-based (since 2026-11-17):
+  - proxy.ts generates a fresh nonce per request and sets `script-src 'nonce-…' 'strict-dynamic'` (no `'unsafe-inline'`). `'self'` and `https://challenges.cloudflare.com` remain only as a fallback for browsers without `'strict-dynamic'` support.
+  - The nonce is also set on the request headers (`Content-Security-Policy`, `x-nonce`); Next.js reads it and applies it to its own scripts and to `next/script` (Turnstile) automatically.
+  - app/layout.tsx calls `await connection()` so every page renders per request. Do not remove it or make pages static: static HTML has no nonce and all scripts would be blocked.
+  - Never add `'unsafe-inline'` back to `script-src`; Mozilla Observatory flags it. `style-src` still allows `'unsafe-inline'` on purpose (Next fonts, Turnstile widget styles).
+  - `'unsafe-eval'` is added in development only.
 
 ### Monitoring and Observability
 
