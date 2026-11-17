@@ -45,6 +45,9 @@ yarn-error.log*
 .envrc
 .npmrc
 
+# docs
+/.docs/csr.md
+
 # vercel
 .vercel
 
