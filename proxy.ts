@@ -1,13 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-function buildCspHeader(): string {
+function buildCspHeader(nonce: string): string {
+  // 'strict-dynamic' lets scripts loaded by nonce-bearing scripts (Next.js
+  // chunks, next/script for Turnstile, Vercel Analytics) run, and makes modern
+  // browsers ignore 'self' and host allowlists. Those stay only as a fallback
+  // for older browsers that do not understand 'strict-dynamic'.
   const scriptSrc = [
+    `'nonce-${nonce}'`,
+    "'strict-dynamic'",
     "'self'",
-    "'unsafe-inline'",
     "https://challenges.cloudflare.com",
   ];
 
   if (process.env.NODE_ENV !== "production") {
+    // React uses eval in development for enhanced debugging only.
     scriptSrc.push("'unsafe-eval'");
   }
 
@@ -27,10 +33,19 @@ function buildCspHeader(): string {
   ].join("; ");
 }
 
-export function proxy() {
-  const response = NextResponse.next();
+export function proxy(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const csp = buildCspHeader(nonce);
 
-  response.headers.set("Content-Security-Policy", buildCspHeader());
+  // Next.js reads the nonce from the request CSP header during rendering and
+  // applies it to its own scripts automatically.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+
+  response.headers.set("Content-Security-Policy", csp);
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
