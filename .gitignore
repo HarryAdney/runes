@@ -47,7 +47,7 @@ yarn-error.log*
 
 # docs
 /.docs/csr.md
-/*.png
+/.docs/*.png
 
 # vercel
 .vercel
