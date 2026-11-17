@@ -34,9 +34,9 @@ Open <http://localhost:3000>
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | No\* | Enables the AI interpretation layer. Model: `claude-opus-4-8`. |
-| `TURNSTILE_SECRET_KEY` | Optional | Server-side Turnstile secret for abuse prevention. |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Optional | Client-side Turnstile widget key. Add both values to enable the challenge. |
+| `ANTHROPIC_API_KEY` | No\* | Enables the AI interpretation layer. Model: `claude-haiku-5-5`. |
+| `TURNSTILE_SECRET_KEY` | Production: yes | Server-side Turnstile secret for abuse prevention. In production, readings fail with a 503 until both Turnstile values are set. Optional in development. |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Production: yes | Client-side Turnstile widget key. Must be set before `npm run build`, because `NEXT_PUBLIC_` values are inlined at build time. |
 | `SENTRY_DSN` | Optional | Server-side error capture for API/runtime failures. |
 | `NEXT_PUBLIC_SENTRY_DSN` | Optional | Browser/runtime error capture for frontend issues. |
 | `NEXT_PUBLIC_SITE_URL` | Recommended | Canonical site origin for SEO metadata, `robots.txt`, and `sitemap.xml`. |
@@ -48,6 +48,34 @@ production.
 
 If `NEXT_PUBLIC_SITE_URL` is not set, the app falls back to deployment-provided
 Vercel URLs when available, then `http://localhost:3000` in local development.
+
+### Deployment (Vercel)
+
+- **Hosting:** Vercel project `runes`, deployed from `main` on GitHub. Vercel URL:
+  `https://runes-bay.vercel.app`. Custom domain: `https://runemaiden.app`.
+- **Domain/DNS:** registered at OpenProvider. DNS stays at OpenProvider, with the
+  A record (`@`) and `www` record set to the values shown in Vercel → Settings →
+  Domains. Vercel issues and renews the SSL certificate automatically, so no
+  third-party certificate is needed.
+- **Secrets:** add `TURNSTILE_SECRET_KEY` and `ANTHROPIC_API_KEY` in Vercel as the
+  **Secret** type. Never put real values in `.env.example` or any tracked file;
+  real values live only in Vercel and in the git-ignored `.env`.
+- **Turnstile hostnames:** the Cloudflare Turnstile widget only works on hostnames
+  listed under the widget's *Hostname management*. The list currently holds
+  `runes-bay.vercel.app`, `runemaiden.app` and `www.runemaiden.app`, entered as
+  bare hostnames (no `https://`, no trailing `/`). Preview deployment URLs are
+  not on the list, so Turnstile fails on them with error `110200` unless you add
+  them.
+- Redeploy after changing environment variables. Hostname changes in Cloudflare
+  take effect without a redeploy.
+
+### Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Console shows `TurnstileError ... 110200`; the reading page shows "Unable to connect" | The page's hostname isn't on the Turnstile widget's hostname list | Add the bare hostname in Cloudflare → Turnstile → widget → Hostname management |
+| `/api/reading` returns 503 in production | Turnstile env vars are missing | Set both Turnstile variables in Vercel and redeploy |
+| Vercel marks a variable "Needs Attention" | The value is empty, or Vercel has detected it as exposed | Fill it in, or rotate the key at the provider and save the new value |
 
 ## Scripts
 

@@ -82,7 +82,7 @@ export default function ReadingResult({ reading }: ReadingResultProps) {
         </section>
       )}
 
-      {!reading.aiAvailable && (
+      {reading.aiEnabled && !reading.aiAvailable && (
         <p className="text-center text-sm text-muted">
           This reading shows the runes&rsquo; traditional meanings. The
           personalised interpretation is unavailable right now.

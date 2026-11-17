@@ -3,7 +3,7 @@ import type { DrawnRune, Reading } from "@/types";
 import { getRuneById } from "@/lib/runes";
 import { getSpreadById } from "@/lib/spreads";
 import { buildFallbackReading, buildGrounding } from "@/lib/reading";
-import { generateReadingNarrative } from "@/lib/anthropic";
+import { generateReadingNarrative, isAiConfigured } from "@/lib/anthropic";
 import { captureServerException } from "@/lib/errorMonitoring.server";
 import { logServerError, observeApiRequest } from "@/lib/observability";
 import { readingRateLimiter } from "@/lib/rateLimit";
@@ -186,11 +186,17 @@ export async function POST(request: NextRequest) {
       grounding,
       spread,
       question,
+      requestId,
     );
 
     if (!narrative) {
       // AI layer unavailable (no key or call failed) — knowledgebase-only reading.
-      const fallback = buildFallbackReading(drawn, spread, question);
+      const fallback = buildFallbackReading(
+        drawn,
+        spread,
+        question,
+        isAiConfigured(),
+      );
       return jsonResponse(fallback satisfies Reading, 200, rateLimitHeaders);
     }
 
@@ -203,6 +209,7 @@ export async function POST(request: NextRequest) {
       sections: narrative.sections,
       advice: narrative.advice,
       aiAvailable: true,
+      aiEnabled: true,
     };
 
     return jsonResponse(reading, 200, rateLimitHeaders);

@@ -27,7 +27,7 @@ function buildCspHeader(): string {
   ].join("; ");
 }
 
-export function middleware() {
+export function proxy() {
   const response = NextResponse.next();
 
   response.headers.set("Content-Security-Policy", buildCspHeader());

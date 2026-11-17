@@ -1,13 +1,19 @@
-// Server-only module: imported exclusively from the /api/reading route handler.
-// It reads ANTHROPIC_API_KEY and must never be imported into a client component.
+// Server-only module: imported by the /api/reading route handler and the
+// /reading server page. It reads ANTHROPIC_API_KEY and must never be imported
+// into a client component.
 import Anthropic from "@anthropic-ai/sdk";
 import { jsonSchemaOutputFormat } from "@anthropic-ai/sdk/helpers/json-schema";
 import type { GroundingEntry, ReadingSection, Spread } from "@/types";
 import { createCircuitBreaker } from "@/lib/circuitBreaker";
 import { captureServerException } from "@/lib/errorMonitoring.server";
+import { logAiUsage } from "@/lib/observability";
 import { groundingToPromptText } from "@/lib/reading";
 
-const MODEL = "claude-opus-4-8";
+const MODEL = "claude-haiku-5-5";
+// How much the model thinks before answering. Lower effort means fewer
+// (billed) thinking tokens. Haiku 5.5 supports low | medium | high | xhigh | max
+// and defaults to medium.
+const EFFORT = "low" as const;
 const AI_TIMEOUT_MS = 12_000;
 const MAX_RETRIES = 2;
 const RETRY_BACKOFF_MS = [400, 1_000] as const;
@@ -108,6 +114,7 @@ export async function generateReadingNarrative(
   grounding: GroundingEntry[],
   spread: Spread,
   question: string | null,
+  requestId?: string,
 ): Promise<ReadingNarrative | null> {
   if (!isAiConfigured()) return null;
   if (!aiCircuitBreaker.canRequest()) return null;
@@ -138,11 +145,25 @@ export async function generateReadingNarrative(
           max_tokens: 1500,
           thinking: { type: "adaptive" },
           system: SYSTEM_PROMPT,
-          output_config: { format: jsonSchemaOutputFormat(OUTPUT_SCHEMA) },
+          output_config: {
+            effort: EFFORT,
+            format: jsonSchemaOutputFormat(OUTPUT_SCHEMA),
+          },
           messages: [{ role: "user", content: userMessage }],
         }),
         AI_TIMEOUT_MS,
       );
+
+      logAiUsage({
+        model: MODEL,
+        effort: EFFORT,
+        attempt,
+        inputTokens: message.usage.input_tokens,
+        outputTokens: message.usage.output_tokens,
+        cacheReadInputTokens: message.usage.cache_read_input_tokens,
+        cacheCreationInputTokens: message.usage.cache_creation_input_tokens,
+        requestId,
+      });
 
       const parsed = message.parsed_output;
       if (!parsed) {
